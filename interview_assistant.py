@@ -34,22 +34,53 @@ DEFAULT_QUESTION_FILE = BASE_DIR / "question.md"
 STATE_FILE = BASE_DIR / ".interview_assistant_state.json"
 
 
-DAY_TOPIC_HINTS = {
-    1: ["岗位匹配与动机", "项目与经历"],
-    2: ["项目与经历"],
-    3: ["项目与经历"],
-    4: ["项目与经历", "规则引擎", "DAG Runtime", "DSL"],
-    5: ["Agent 核心"],
-    6: ["MCP / Tool 平台", "Agent 核心", "Multi-Agent"],
-    7: ["Memory / Context Engineering"],
-    8: ["Trace / Eval / Replay"],
-    9: ["LLM 与推理基础", "GPU / 推理工程"],
-    10: ["后端与系统设计"],
-    11: ["操作系统 / 网络 / SQL / 前端"],
-    12: ["Go / C++ / 语言基础"],
-    13: ["算法与 coding"],
-    14: ["岗位匹配与动机", "项目与经历", "Agent 核心", "LLM 与推理基础"],
-}
+_STOP_WORDS = frozenset({
+    "的", "一", "和", "与", "是", "在", "把", "对", "从", "为", "了",
+    "也", "不", "要", "能", "会", "可", "做", "用", "有", "被", "让",
+    "而", "但", "又", "或", "及", "等", "这个", "那个",
+})
+
+
+def _is_hint(text: str) -> bool:
+    """判断一段文字是否适合作为主题关键词。"""
+    cleaned = text.strip().strip("`'\"")
+    if not cleaned or len(cleaned) < 2:
+        return False
+    if cleaned in _STOP_WORDS:
+        return False
+    return True
+
+
+def extract_day_topic_hints(plan: DayPlan) -> List[str]:
+    """从 Day 标题和内容中自动提取主题关键词。"""
+    hints: List[str] = []
+    seen: set = set()
+
+    def _add(text: str) -> None:
+        cleaned = text.strip().strip("`'\"")
+        if _is_hint(cleaned) and cleaned not in seen:
+            hints.append(cleaned)
+            seen.add(cleaned)
+
+    # 从标题提取：按 / 和 ， 拆分，取有意义的片段
+    for segment in re.split(r"[/，,]", plan.title):
+        segment = segment.strip().strip("`'\"")
+        if _is_hint(segment):
+            _add(segment)
+
+    # 从 section 内容提取：仅从“今日目标”“今日任务”中提取反引号内的技术术语
+    backtick_re = re.compile(r"`([^`]+)`")
+    target_sections = {"今日目标", "今日任务"}
+    for section_name, lines in plan.sections.items():
+        if section_name not in target_sections:
+            continue
+        for line in lines:
+            for match in backtick_re.finditer(line):
+                term = match.group(1).strip()
+                if _is_hint(term):
+                    _add(term)
+
+    return hints
 
 
 @dataclass
@@ -264,8 +295,8 @@ def get_recommended_day(plans: Dict[int, DayPlan], state: dict) -> int:
     return min(plans) if plans else 1
 
 
-def choose_questions_for_day(day: int, questions: List[Question], count: int) -> List[Question]:
-    hints = DAY_TOPIC_HINTS.get(day, [])
+def choose_questions_for_day(plan: DayPlan, questions: List[Question], count: int) -> List[Question]:
+    hints = extract_day_topic_hints(plan)
     matched = find_questions_by_topics(questions, hints) if hints else questions[:]
     if not matched:
         matched = questions[:]
@@ -557,7 +588,7 @@ def interactive_menu(plans: Dict[int, DayPlan], questions: List[Question], state
         elif choice == "3":
             plan = plans[recommended_day]
             print_day_detail(plan, state)
-            selected = choose_questions_for_day(recommended_day, questions, 5)
+            selected = choose_questions_for_day(plan, questions, 5)
             practice_questions(selected, state, mode="daily", day=recommended_day, allow_notes=True)
         elif choice == "4":
             keyword = input_with_default("输入主题关键词，例如 Memory / MCP / SQL > ", "")
@@ -642,7 +673,8 @@ def main() -> int:
         if args.practice_day not in plans:
             print(f"找不到 Day {args.practice_day}")
             return 1
-        selected = choose_questions_for_day(args.practice_day, questions, args.count)
+        plan = plans[args.practice_day]
+        selected = choose_questions_for_day(plan, questions, args.count)
         practice_questions(selected, state, mode="daily", day=args.practice_day, allow_notes=True)
         return 0
 
