@@ -35,17 +35,19 @@ python3 interview_assistant.py --search Memory
 python3 interview_assistant.py --practice-day 5 --count 3
 python3 interview_assistant.py --topic MCP --count 5
 python3 interview_assistant.py --mock --count 8
-python3 interview_assistant.py --plan ./my_plan.md --question ./my_qa.md
+python3 interview_assistant.py --data-dir ./my_data
 ```
 
 ## 工作方式
 
 脚本启动后默认读取同目录下的两个文件：
 
-- `plan.md`（可通过 `--plan` 指定其他路径）
-- `question.md`（可通过 `--question` 指定其他路径）
+- `plan.md`
+- `question.md`
 
-并在当前目录下读写两个辅助文件：
+可通过 `--data-dir` 指定其他数据目录，文件名保持不变。
+
+脚本还会在数据目录下读写两个辅助文件：
 
 - `.interview_assistant_state.json`
   - 持久化完成进度、复盘和练习历史
@@ -450,14 +452,14 @@ python3 interview_assistant.py --plan ./my_plan.md --question ./my_qa.md
 
 为了正确使用这个脚本，最好也了解它当前的边界。
 
-### 1. 默认文件名可自定义
+### 1. 数据目录可自定义
 
-脚本默认读取：
+脚本默认读取同目录下的：
 
 - `plan.md`
 - `question.md`
 
-可通过 `--plan` 和 `--question` 参数指定任意路径的 Markdown 文件。
+可通过 `--data-dir` 指定其他目录，文件名 `plan.md` 和 `question.md` 是固定规范，不可更改。
 
 ### 2. 解析是基于正则，不是完整 Markdown AST
 
