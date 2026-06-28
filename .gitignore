@@ -1,0 +1,12 @@
+# 隐藏目录下的所有文件（如 .personal/）
+.*/
+
+# 运行时状态文件
+.interview_assistant_state.json
+
+# 每日交互记录日志
+交互记录_*.md
+
+# Python 缓存
+__pycache__/
+*.pyc
