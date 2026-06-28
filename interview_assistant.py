@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """面试助手。
 
-零依赖命令行工具，默认读取工作区中的两份 Markdown：
-- plan.md（可通过 --plan 指定）
-- question.md（可通过 --question 指定）
+零依赖命令行工具，默认读取数据目录下的两份 Markdown：
+- plan.md
+- question.md
+
+可通过 --data-dir 指定数据目录，文件名固定不变。
 
 功能：
 - 查看 14 天计划概览和某一天详情
@@ -29,9 +31,11 @@ from typing import Dict, List, Optional
 
 
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_PLAN_FILE = BASE_DIR / "plan.md"
-DEFAULT_QUESTION_FILE = BASE_DIR / "question.md"
-STATE_FILE = BASE_DIR / ".interview_assistant_state.json"
+DEFAULT_DATA_DIR = BASE_DIR
+
+PLAN_FILENAME = "plan.md"
+QUESTION_FILENAME = "question.md"
+STATE_FILENAME = ".interview_assistant_state.json"
 
 
 _STOP_WORDS = frozenset({
@@ -195,15 +199,16 @@ def parse_questions(text: str) -> List[Question]:
     return questions
 
 
-def load_state() -> dict:
-    if not STATE_FILE.exists():
+def load_state(data_dir: Path) -> dict:
+    state_file = data_dir / STATE_FILENAME
+    if not state_file.exists():
         return {
             "completed_days": [],
             "day_notes": {},
             "practice_history": [],
         }
     try:
-        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        return json.loads(state_file.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return {
             "completed_days": [],
@@ -212,8 +217,9 @@ def load_state() -> dict:
         }
 
 
-def save_state(state: dict) -> None:
-    STATE_FILE.write_text(
+def save_state(state: dict, data_dir: Path) -> None:
+    state_file = data_dir / STATE_FILENAME
+    state_file.write_text(
         json.dumps(state, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
@@ -336,35 +342,37 @@ def safe_int(text: str, default: int) -> int:
         return default
 
 
-def record_note_for_day(state: dict, day: int) -> None:
+def record_note_for_day(state: dict, day: int, data_dir: Path) -> None:
     print("\n请输入今天的复盘内容。直接回车可跳过。")
     note = input_with_default("复盘> ", "")
     if note:
         state.setdefault("day_notes", {})[str(day)] = note
-        save_state(state)
+        save_state(state, data_dir)
         log_path = append_daily_log(
             f"Day {day} 复盘",
             [
                 f"- 对应 Day：Day {day}",
                 f"- 内容：{note}",
             ],
+            data_dir,
         )
         print("已保存复盘。")
         print(f"已追加到：{log_path}")
 
 
-def mark_day_completed(state: dict, day: int) -> None:
+def mark_day_completed(state: dict, day: int, data_dir: Path) -> None:
     completed = set(state.setdefault("completed_days", []))
     if day not in completed:
         completed.add(day)
         state["completed_days"] = sorted(completed)
-        save_state(state)
+        save_state(state, data_dir)
         log_path = append_daily_log(
             f"Day {day} 完成",
             [
                 f"- 对应 Day：Day {day}",
                 "- 状态：已标记完成",
             ],
+            data_dir,
         )
         print(f"已标记 Day {day} 完成。")
         print(f"已追加到：{log_path}")
@@ -376,6 +384,7 @@ def practice_questions(
     questions: List[Question],
     state: dict,
     mode: str,
+    data_dir: Path,
     day: Optional[int] = None,
     allow_notes: bool = False,
 ) -> None:
@@ -421,7 +430,7 @@ def practice_questions(
             "results": results,
         }
     )
-    save_state(state)
+    save_state(state, data_dir)
     log_lines = [
         f"- 模式：{mode}",
         f"- 题目数：{len(results)}",
@@ -439,15 +448,15 @@ def practice_questions(
         )
         if item.get("reflection"):
             log_lines.append(f"  - 卡点：{item['reflection']}")
-    log_path = append_daily_log("练习记录", log_lines)
+    log_path = append_daily_log("练习记录", log_lines, data_dir)
     summarize_practice_session(results)
     print(f"已追加到：{log_path}")
 
     if allow_notes and day is not None:
         if input_with_default("\n是否记录今天复盘？(y/N) > ", "n").lower() == "y":
-            record_note_for_day(state, day)
+            record_note_for_day(state, day, data_dir)
         if input_with_default("是否将今天标记为完成？(y/N) > ", "n").lower() == "y":
-            mark_day_completed(state, day)
+            mark_day_completed(state, day, data_dir)
 
 
 def print_progress(state: dict, plans: Dict[int, DayPlan]) -> None:
@@ -471,12 +480,12 @@ def get_day_title(plans: Dict[int, DayPlan], day: Optional[int]) -> str:
     return plans[day].title
 
 
-def get_today_log_path() -> Path:
-    return BASE_DIR / f"交互记录_{date.today().strftime('%Y%m%d')}.md"
+def get_today_log_path(data_dir: Path) -> Path:
+    return data_dir / f"交互记录_{date.today().strftime('%Y%m%d')}.md"
 
 
-def append_daily_log(title: str, lines: List[str]) -> Path:
-    log_path = get_today_log_path()
+def append_daily_log(title: str, lines: List[str], data_dir: Path) -> Path:
+    log_path = get_today_log_path(data_dir)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if not log_path.exists():
         header = [
@@ -521,7 +530,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  1. 不带任何参数运行时，会进入交互式菜单。\n"
             "  2. 使用命令行参数时，会直接执行对应动作并输出结果。\n"
             "  3. 练习记录、自评分和复盘会自动追加到当天日志 Markdown。\n"
-            "  4. 可通过 --plan 和 --question 指定自定义文件路径。\n"
+            "  4. 可通过 --data-dir 指定数据目录，目录内需包含 plan.md 和 question.md。\n"
             "\n"
             "常用示例：\n"
             "  python3 interview_assistant.py\n"
@@ -531,7 +540,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  python3 interview_assistant.py --practice-day 5 --count 3\n"
             "  python3 interview_assistant.py --topic MCP --count 5\n"
             "  python3 interview_assistant.py --mock --count 8\n"
-            "  python3 interview_assistant.py --plan ./my_plan.md --question ./my_qa.md\n"
+            "  python3 interview_assistant.py --data-dir ./my_data\n"
         ),
         formatter_class=HelpFormatter,
     )
@@ -544,21 +553,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mock", action="store_true", help="随机模拟面试")
     parser.add_argument("--count", type=int, default=5, help="练习题数，默认 5")
     parser.add_argument(
-        "--plan",
+        "--data-dir",
         type=Path,
-        default=DEFAULT_PLAN_FILE,
-        help=f"计划文件路径，默认 {DEFAULT_PLAN_FILE.name}",
-    )
-    parser.add_argument(
-        "--question",
-        type=Path,
-        default=DEFAULT_QUESTION_FILE,
-        help=f"题库文件路径，默认 {DEFAULT_QUESTION_FILE.name}",
+        default=DEFAULT_DATA_DIR,
+        help=f"数据目录，包含 plan.md 和 question.md，默认 {DEFAULT_DATA_DIR.name}",
     )
     return parser
 
 
-def interactive_menu(plans: Dict[int, DayPlan], questions: List[Question], state: dict) -> None:
+def interactive_menu(plans: Dict[int, DayPlan], questions: List[Question], state: dict, data_dir: Path) -> None:
     while True:
         recommended_day = get_recommended_day(plans, state)
         print("\n面试助手")
@@ -589,7 +592,7 @@ def interactive_menu(plans: Dict[int, DayPlan], questions: List[Question], state
             plan = plans[recommended_day]
             print_day_detail(plan, state)
             selected = choose_questions_for_day(plan, questions, 5)
-            practice_questions(selected, state, mode="daily", day=recommended_day, allow_notes=True)
+            practice_questions(selected, state, mode="daily", data_dir=data_dir, day=recommended_day, allow_notes=True)
         elif choice == "4":
             keyword = input_with_default("输入主题关键词，例如 Memory / MCP / SQL > ", "")
             if not keyword:
@@ -600,11 +603,11 @@ def interactive_menu(plans: Dict[int, DayPlan], questions: List[Question], state
                 print("没有找到匹配的问题。")
                 continue
             random.shuffle(matched)
-            practice_questions(matched[:5], state, mode=f"topic:{keyword}")
+            practice_questions(matched[:5], state, mode=f"topic:{keyword}", data_dir=data_dir)
         elif choice == "5":
             selected = questions[:]
             random.shuffle(selected)
-            practice_questions(selected[:5], state, mode="mock")
+            practice_questions(selected[:5], state, mode="mock", data_dir=data_dir)
         elif choice == "6":
             keyword = input_with_default("输入搜索关键词 > ", "")
             matched = find_questions_by_keyword(questions, keyword)
@@ -618,10 +621,10 @@ def interactive_menu(plans: Dict[int, DayPlan], questions: List[Question], state
             print_progress(state, plans)
         elif choice == "8":
             day = safe_int(input_with_default("输入 Day 编号 > ", str(recommended_day)), recommended_day)
-            record_note_for_day(state, day)
+            record_note_for_day(state, day, data_dir)
         elif choice == "9":
             day = safe_int(input_with_default("输入 Day 编号 > ", str(recommended_day)), recommended_day)
-            mark_day_completed(state, day)
+            mark_day_completed(state, day, data_dir)
         elif choice == "0":
             print("已退出。")
             return
@@ -633,8 +636,9 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    plan_file: Path = args.plan
-    question_file: Path = args.question
+    data_dir: Path = args.data_dir.resolve()
+    plan_file = data_dir / PLAN_FILENAME
+    question_file = data_dir / QUESTION_FILENAME
 
     try:
         plans = parse_day_plans(read_text(plan_file))
@@ -643,7 +647,7 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 1
 
-    state = load_state()
+    state = load_state(data_dir)
 
     if args.overview:
         print_day_overview(plans, state)
@@ -675,7 +679,7 @@ def main() -> int:
             return 1
         plan = plans[args.practice_day]
         selected = choose_questions_for_day(plan, questions, args.count)
-        practice_questions(selected, state, mode="daily", day=args.practice_day, allow_notes=True)
+        practice_questions(selected, state, mode="daily", data_dir=data_dir, day=args.practice_day, allow_notes=True)
         return 0
 
     if args.topic:
@@ -684,16 +688,16 @@ def main() -> int:
             print("没有找到匹配的问题。")
             return 1
         random.shuffle(matched)
-        practice_questions(matched[: args.count], state, mode=f"topic:{args.topic}")
+        practice_questions(matched[: args.count], state, mode=f"topic:{args.topic}", data_dir=data_dir)
         return 0
 
     if args.mock:
         selected = questions[:]
         random.shuffle(selected)
-        practice_questions(selected[: args.count], state, mode="mock")
+        practice_questions(selected[: args.count], state, mode="mock", data_dir=data_dir)
         return 0
 
-    interactive_menu(plans, questions, state)
+    interactive_menu(plans, questions, state, data_dir)
     return 0
 
 
