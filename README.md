@@ -58,6 +58,147 @@ python3 interview_assistant.py --data-dir ./llm
 
 三套题库互不依赖，可独立使用和更新。
 
+## 运行示例
+
+### 查看执行计划概览
+
+```bash
+$ python3 interview_assistant.py --data-dir ./agent --overview
+
+14 天执行清单概览
+------------------------------------------------
+Day  1 | 统一岗位叙事 | 未完成
+Day  2 | 项目深讲一，长程 Agent 框架 | 未完成
+Day  3 | 项目深讲二，数据流水线 Agent | 未完成
+Day  4 | 项目深讲三，策略平台 / 规则引擎 | 未完成
+Day  5 | Agent Runtime 总论 | 未完成
+Day  6 | Tool Use / MCP / Skill / Subagent | 未完成
+Day  7 | Memory / Context Engineering | 未完成
+Day  8 | Trace / Eval / Replay / 反馈闭环 | 未完成
+Day  9 | LLM / 推理基础 | 未完成
+Day 10 | 系统设计与后端基础 | 未完成
+Day 11 | 操作系统 / 网络 / SQL / 前端 | 未完成
+Day 12 | Go / C++ / STL / 语言底层 | 未完成
+Day 13 | 算法与 40 分钟笔试模拟 | 未完成
+Day 14 | 全链路模拟面 | 未完成
+```
+
+### 查看某一天的详细任务
+
+```bash
+$ python3 interview_assistant.py --data-dir ./ai-infra --day 7
+
+Day 7: CUDA / GPU 编程
+============================================================
+
+[今日目标]
+- 把 GPU 内存层次、Kernel 优化、FlashAttention 讲到面试级
+
+[今日任务]
+1. 梳理 GPU 内存层次和 SIMT 模型
+2. 练习 Memory Coalescing 和 Bank Conflict
+3. 梳理 FlashAttention 的 IO 分析
+4. 练习 GEMM 优化链（Naive → Tiling → Tensor Core）
+
+[今日输出]
+- `GPU 内存层次速查表`
+- `GEMM 优化链口述稿`
+
+[验收标准]
+- 能说出 Bank Conflict 的避免方法
+- 能解释 Online Softmax 的分块更新原理
+```
+
+### 按关键词搜索题目
+
+```bash
+$ python3 interview_assistant.py --data-dir ./llm --search "MoE"
+
+关键词：MoE
+共找到 5 题
+- Q1 | 岗位匹配与动机 | 你为什么适合 LLM 后训练方向？
+- Q15 | Transformer 架构 | MoE（Mixture of Experts）的核心设计是什么？
+- Q16 | Transformer 架构 | MoE 的负载均衡怎么做？
+- Q65 | 前沿与趋势 | DualPipe（通信-计算重叠）是什么？
+- Q66 | 前沿与趋势 | MoE 规模扩大后对 Infra 有什么影响？
+```
+
+### 按主题抽问练习
+
+```bash
+$ python3 interview_assistant.py --data-dir ./agent --topic "MCP" --count 3
+
+进入练习模式。
+每道题先自己回答，按回车后再看要点。
+
+============================================================
+第 1/3 题
+Q24. 什么时候一个能力更适合做 MCP Tool？
+分类：MCP / Tool 平台
+按回车查看回答要点...
+
+[回答要点]
+- 能力通用、边界清晰、输入输出可结构化。
+- 希望被多个 Agent、多个宿主或多个场景复用。
+- 需要独立治理权限、缓存、可靠性和观测。
+给自己打分（1-5，默认 3）> 
+```
+
+### 按天推荐练习题
+
+```bash
+$ python3 interview_assistant.py --data-dir ./ai-infra --practice-day 5 --count 3
+
+进入练习模式。
+
+============================================================
+第 1/3 题
+Q29. All-to-All 通信量怎么算？MoE 里为什么重要？
+分类：分布式训练
+
+[回答要点]
+- All-to-All：每个 GPU 向其他所有 GPU 发送不同的数据块。
+- 通信量 ≈ (P-1)/P × DataSize（每 GPU 发送和接收）。
+- MoE 中 all-to-all 用于 token dispatch 和 combine，通信量与 expert 数量和 top-K 成正比。
+- 跨节点 all-to-all 受限于 IB 带宽，是 MoE 规模化的核心瓶颈。
+```
+
+### 随机模拟面试
+
+```bash
+$ python3 interview_assistant.py --data-dir ./llm --mock --count 5
+
+进入练习模式。
+
+============================================================
+第 1/5 题
+Q35. GRPO 和 PPO 的区别？为什么可以去掉 Critic？
+分类：RL 后训练
+
+[回答要点]
+- GRPO：对每个 prompt 采样一组回答，用组内标准化作为 advantage。
+- 不需要 Critic 模型，因为 advantage 通过组内比较计算。
+- 少一个模型意味着显存释放，但组内采样增加了 Rollout 负担。
+
+============================================================
+第 2/5 题
+Q12. MLA（Multi-head Latent Attention）的核心设计是什么？
+分类：Transformer 架构
+
+[回答要点]
+- 用低秩压缩把 K/V 投影到低维 latent space，KV Cache 压缩约 93%。
+- Decoupled RoPE：把 RoPE 从 Q/K 的内容维度分离出来。
+- Weight Absorption：把 up-projection 吸收到 Q/K/V 的权重里。
+
+练习总结
+------------------------------------------------
+题目数：5
+平均自评分：3.00 / 5
+已追加到：llm/交互记录_20260629.md
+```
+
+每次练习结束后，结果会自动追加到当天的交互记录日志中，方便日后复盘。
+
 ## 工作方式
 
 脚本启动后默认读取同目录下的两个文件：
