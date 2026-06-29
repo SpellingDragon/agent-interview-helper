@@ -47,6 +47,7 @@ python3 interview_assistant.py --data-dir ./my_data
 | Agent 平台工程师 | `agent/` | Agent Runtime / Tool / MCP / Memory / Eval | 110 题 |
 | AI Infra 系统工程师 | `ai-infra/` | 推理引擎 / 分布式训练 / CUDA / 系统设计 | 105 题 |
 | LLM 理论与后训练 | `llm/` | Transformer / RL 后训练 / Scaling Law | 82 题 |
+| MyGO!!!!! 粉丝修炼 | `mygo/` | 成员 / 音乐 / Live / 冷知识 | 30 题 |
 
 使用方式：
 
@@ -54,6 +55,7 @@ python3 interview_assistant.py --data-dir ./my_data
 python3 interview_assistant.py --data-dir ./agent
 python3 interview_assistant.py --data-dir ./ai-infra
 python3 interview_assistant.py --data-dir ./llm
+python3 interview_assistant.py --data-dir ./mygo
 ```
 
 三套题库互不依赖，可独立使用和更新。
