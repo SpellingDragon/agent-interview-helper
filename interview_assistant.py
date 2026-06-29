@@ -8,7 +8,7 @@
 可通过 --data-dir 指定数据目录，文件名固定不变。
 
 功能：
-- 查看 14 天计划概览和某一天详情
+- 查看执行计划概览和某一天详情
 - 按天推荐练习题
 - 按主题抽问
 - 随机模拟面试
@@ -248,7 +248,8 @@ def print_block(title: str, lines: List[str]) -> None:
 
 def print_day_overview(plans: Dict[int, DayPlan], state: dict) -> None:
     completed = set(state.get("completed_days", []))
-    print("\n14 天执行清单概览")
+    total_days = len(plans)
+    print(f"\n{total_days} 天执行清单概览")
     print("-" * 48)
     for day in sorted(plans):
         status = "已完成" if day in completed else "未完成"
@@ -522,7 +523,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "面试助手\n"
             "\n"
-            "读取当前目录下的 14 天计划和高频问答题库，支持查看计划、搜索题目、"
+            "读取数据目录下的执行计划和高频问答题库，支持查看计划、搜索题目、"
             "按天练习、按主题抽问、随机模拟面试，以及记录练习结果和复盘。"
         ),
         epilog=(
@@ -544,7 +545,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=HelpFormatter,
     )
-    parser.add_argument("--overview", action="store_true", help="查看 14 天计划概览")
+    parser.add_argument("--overview", action="store_true", help="查看执行计划概览")
     parser.add_argument("--day", type=int, help="查看某一天详情，例如 --day 7")
     parser.add_argument("--search", type=str, help="按关键词搜索题目")
     parser.add_argument("--progress", action="store_true", help="查看当前进度")
@@ -567,7 +568,7 @@ def interactive_menu(plans: Dict[int, DayPlan], questions: List[Question], state
         print("\n面试助手")
         print("=" * 60)
         print(f"推荐今天练习：Day {recommended_day} - {plans[recommended_day].title}")
-        print("1. 查看 14 天计划概览")
+        print(f"1. 查看 {len(plans)} 天计划概览")
         print("2. 查看某一天详情")
         print("3. 开始今天的推荐练习")
         print("4. 按主题抽问")
