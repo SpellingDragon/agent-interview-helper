@@ -40,7 +40,7 @@ python3 interview_assistant.py --data-dir ./my_data
 
 ## 三套题库
 
-本项目维护三套独立的面试题库，每套包含 `plan.md`（14 天执行清单）和 `question.md`（高频问答题库），定位如下：
+本项目维护多套独立的面试题库，每套包含 `plan.md`（14 天执行清单）和 `question.md`（高频问答题库），定位如下：
 
 | 题库 | 目录 | 适用方向 | 题目数量 |
 |------|------|----------|----------|
@@ -58,7 +58,7 @@ python3 interview_assistant.py --data-dir ./llm
 python3 interview_assistant.py --data-dir ./mygo
 ```
 
-三套题库互不依赖，可独立使用和更新。
+题库互不依赖，可独立使用和更新。
 
 ## 运行示例
 
