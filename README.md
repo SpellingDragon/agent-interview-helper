@@ -36,7 +36,28 @@ python3 interview_assistant.py --practice-day 5 --count 3
 python3 interview_assistant.py --topic MCP --count 5
 python3 interview_assistant.py --mock --count 8
 python3 interview_assistant.py --data-dir ./my_data
+python3 interview_assistant.py --data-dir ./agent --overview --json
 ```
+
+### JSON 输出
+
+所有命令支持 `--json` 参数，输出结构化 JSON，适合 Agent 调用和脚本集成：
+
+```bash
+$ python3 interview_assistant.py --data-dir ./agent --search "MCP" --json
+
+{
+  "keyword": "MCP",
+  "count": 3,
+  "questions": [
+    {"qid": 24, "title": "MCP 和普通函数调用相比，工程价值是什么？", "category": "MCP / Tool 平台"},
+    {"qid": 25, "title": "什么时候一个能力更适合做 MCP Tool？", "category": "MCP / Tool 平台"},
+    {"qid": 26, "title": "MCP 接入后还需要做哪些工程工作？", "category": "MCP / Tool 平台"}
+  ]
+}
+```
+
+`--json` 模式下，练习和模拟面试命令会直接返回题目和答案要点，不进入交互模式。
 
 ## 题库
 

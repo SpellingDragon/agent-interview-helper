@@ -246,8 +246,19 @@ def print_block(title: str, lines: List[str]) -> None:
         print(line if line else "")
 
 
-def print_day_overview(plans: Dict[int, DayPlan], state: dict) -> None:
+def print_day_overview(plans: Dict[int, DayPlan], state: dict, *, json_mode: bool = False) -> None:
     completed = set(state.get("completed_days", []))
+    if json_mode:
+        data = {
+            "total_days": len(plans),
+            "days": [
+                {"day": d, "title": plans[d].title, "completed": d in completed}
+                for d in sorted(plans)
+            ],
+            "progress": {"completed": len(completed), "total": len(plans)},
+        }
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return
     total_days = len(plans)
     print(f"\n{total_days} 天执行清单概览")
     print("-" * 48)
@@ -256,7 +267,16 @@ def print_day_overview(plans: Dict[int, DayPlan], state: dict) -> None:
         print(f"Day {day:>2} | {plans[day].title} | {status}")
 
 
-def print_day_detail(plan: DayPlan, state: Optional[dict] = None) -> None:
+def print_day_detail(plan: DayPlan, state: Optional[dict] = None, *, json_mode: bool = False) -> None:
+    if json_mode:
+        sections = {k: clean_lines(v) for k, v in plan.sections.items()}
+        data = {"day": plan.day, "title": plan.title, "sections": sections}
+        if state:
+            note = state.get("day_notes", {}).get(str(plan.day))
+            if note:
+                data["note"] = note
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return
     print(f"\nDay {plan.day}: {plan.title}")
     print("=" * 60)
     for section_name, lines in plan.sections.items():
@@ -460,8 +480,31 @@ def practice_questions(
             mark_day_completed(state, day, data_dir)
 
 
-def print_progress(state: dict, plans: Dict[int, DayPlan]) -> None:
+def _question_to_dict(question: Question, include_answer: bool = True) -> dict:
+    d = {"qid": question.qid, "title": question.title, "category": question.category}
+    if include_answer:
+        d["answer_points"] = clean_lines(question.sections.get("回答要点", []))
+        oneliner = clean_lines(question.sections.get("一句话版", []))
+        if oneliner:
+            d["oneliner"] = oneliner
+    return d
+
+
+def print_progress(state: dict, plans: Dict[int, DayPlan], *, json_mode: bool = False) -> None:
     completed = set(state.get("completed_days", []))
+    if json_mode:
+        history = state.get("practice_history", [])
+        data = {
+            "completed_days": sorted(completed),
+            "total_days": len(plans),
+            "completion_rate": round(len(completed) / len(plans), 2) if plans else 0,
+            "recommended_day": get_recommended_day(plans, state),
+            "practice_sessions": len(history),
+        }
+        if history:
+            data["last_practice"] = history[-1]["timestamp"]
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return
     print("\n当前进度")
     print("-" * 48)
     print(f"已完成天数：{len(completed)} / {len(plans)}")
@@ -559,6 +602,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_DATA_DIR,
         help=f"数据目录，包含 plan.md 和 question.md，默认 {DEFAULT_DATA_DIR.name}",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="以 JSON 格式输出，适合 Agent 和脚本调用",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="抑制交互提示和非必要输出",
+    )
     return parser
 
 
@@ -651,52 +705,101 @@ def main() -> int:
     state = load_state(data_dir)
 
     if args.overview:
-        print_day_overview(plans, state)
+        print_day_overview(plans, state, json_mode=args.json_output)
         return 0
 
     if args.day is not None:
         plan = plans.get(args.day)
         if not plan:
-            print(f"找不到 Day {args.day}")
+            if args.json_output:
+                print(json.dumps({"error": f"找不到 Day {args.day}"}, ensure_ascii=False))
+            else:
+                print(f"找不到 Day {args.day}")
             return 1
-        print_day_detail(plan, state)
+        print_day_detail(plan, state, json_mode=args.json_output)
         return 0
 
     if args.search:
         matched = find_questions_by_keyword(questions, args.search)
-        print(f"关键词：{args.search}")
-        print(f"共找到 {len(matched)} 题")
-        for question in matched[:50]:
-            print(f"- Q{question.qid} | {question.category} | {question.title}")
+        if args.json_output:
+            data = {
+                "keyword": args.search,
+                "count": len(matched),
+                "questions": [_question_to_dict(q, include_answer=False) for q in matched[:50]],
+            }
+            print(json.dumps(data, ensure_ascii=False, indent=2))
+        else:
+            print(f"关键词：{args.search}")
+            print(f"共找到 {len(matched)} 题")
+            for question in matched[:50]:
+                print(f"- Q{question.qid} | {question.category} | {question.title}")
         return 0
 
     if args.progress:
-        print_progress(state, plans)
+        print_progress(state, plans, json_mode=args.json_output)
         return 0
 
     if args.practice_day is not None:
         if args.practice_day not in plans:
-            print(f"找不到 Day {args.practice_day}")
+            if args.json_output:
+                print(json.dumps({"error": f"找不到 Day {args.practice_day}"}, ensure_ascii=False))
+            else:
+                print(f"找不到 Day {args.practice_day}")
             return 1
         plan = plans[args.practice_day]
         selected = choose_questions_for_day(plan, questions, args.count)
-        practice_questions(selected, state, mode="daily", data_dir=data_dir, day=args.practice_day, allow_notes=True)
+        if args.json_output:
+            data = {
+                "mode": "practice",
+                "day": args.practice_day,
+                "count": len(selected),
+                "questions": [_question_to_dict(q) for q in selected],
+            }
+            print(json.dumps(data, ensure_ascii=False, indent=2))
+        else:
+            practice_questions(selected, state, mode="daily", data_dir=data_dir, day=args.practice_day, allow_notes=True)
         return 0
 
     if args.topic:
         matched = find_questions_by_keyword(questions, args.topic)
         if not matched:
-            print("没有找到匹配的问题。")
+            if args.json_output:
+                print(json.dumps({"keyword": args.topic, "count": 0, "questions": []}, ensure_ascii=False))
+            else:
+                print("没有找到匹配的问题。")
             return 1
         random.shuffle(matched)
-        practice_questions(matched[: args.count], state, mode=f"topic:{args.topic}", data_dir=data_dir)
+        selected = matched[: args.count]
+        if args.json_output:
+            data = {
+                "mode": "topic",
+                "keyword": args.topic,
+                "count": len(selected),
+                "questions": [_question_to_dict(q) for q in selected],
+            }
+            print(json.dumps(data, ensure_ascii=False, indent=2))
+        else:
+            practice_questions(selected, state, mode=f"topic:{args.topic}", data_dir=data_dir)
         return 0
 
     if args.mock:
         selected = questions[:]
         random.shuffle(selected)
-        practice_questions(selected[: args.count], state, mode="mock", data_dir=data_dir)
+        selected = selected[: args.count]
+        if args.json_output:
+            data = {
+                "mode": "mock",
+                "count": len(selected),
+                "questions": [_question_to_dict(q) for q in selected],
+            }
+            print(json.dumps(data, ensure_ascii=False, indent=2))
+        else:
+            practice_questions(selected, state, mode="mock", data_dir=data_dir)
         return 0
+
+    if args.json_output:
+        print(json.dumps({"error": "JSON 模式不支持交互式菜单，请使用具体命令参数"}, ensure_ascii=False))
+        return 1
 
     interactive_menu(plans, questions, state, data_dir)
     return 0
