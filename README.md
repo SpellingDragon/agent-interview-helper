@@ -59,6 +59,18 @@ $ python3 interview_assistant.py --data-dir ./agent --search "MCP" --json
 
 `--json` 模式下，练习和模拟面试命令会直接返回题目和答案要点，不进入交互模式。
 
+## Agent Skill
+
+项目在 `skills/` 目录维护可供其他 Agent 下载注册的 skill 文件：
+
+```bash
+# 下载 skill 文件
+curl -O skills/interview/SKILL.md \
+  https://raw.githubusercontent.com/SpellingDragon/agent-interview-helper/main/skills/interview/SKILL.md
+```
+
+Skill 文件描述了可用题库、CLI 命令、JSON 输出格式和示例交互，任何支持 skill 注册的 Agent 均可直接导入。
+
 ## 题库
 
 本项目维护多套独立的面试题库，每套包含 `plan.md`（执行清单）和 `question.md`（高频问答题库），定位如下：
