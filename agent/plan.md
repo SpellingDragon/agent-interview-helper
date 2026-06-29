@@ -115,8 +115,8 @@
    - 为什么做这个项目
    - 和通用 Agent 框架相比，核心探索点是什么
    - 为什么 Memory 是核心抽象
-   - 为什么 Agent 之间传 `EventKey` 而不是完整上下文
-   - Skill / Tool / Agent / Model 边界是什么
+   - 如何控制多 Agent 间的上下文膨胀
+   - Tool 和 Skill 的边界是什么
 3. 写出 3 个失败案例或尚未解决的问题
 4. 写出 3 个下一步演进方向
 
@@ -134,7 +134,7 @@
 
 ### 加练
 
-- 用 1 分钟回答"为什么 Agent 之间不直接传大段上下文"
+- 用 1 分钟回答"为什么多 Agent 协作时不能直接传大段上下文"
 
 ---
 
@@ -167,7 +167,7 @@
 ### 验收标准
 
 - 能说清楚它为什么是 Agent，而不是纯 workflow
-- 能说清楚 Tool 和 Memory key 的价值
+- 能说清楚 Tool 设计和上下文管理的价值
 - 能回答"长链路里瓶颈在哪"
 
 ### 晚间抽查
@@ -300,7 +300,7 @@
 ### 验收标准
 
 - 能回答"Memory 的核心不是存，而是正确取用"
-- 能清楚说明 `EventKey` / memory key 的价值
+- 能清楚说明上下文解耦和按需注入的价值
 - 能讲出长期记忆的失败模式和清理策略
 
 ### 晚间抽查
@@ -322,6 +322,12 @@
 3. 设计一套基础 Eval 指标
 4. 结合自己的 Agent 项目举例说明失败归因方法
 5. 写出"真实任务反馈如何进入产品和模型迭代闭环"
+6. 练习 Agent Benchmark 相关题目
+   - SWE-bench 评估流程和难点
+   - GAIA / WebArena 的测试维度
+   - Agent 评估框架和传统 LLM 评估的区别
+   - LLM-as-Judge 的偏见和缓解方法
+   - 如何保证评估可复现性
 
 ### 今日输出
 
@@ -334,6 +340,8 @@
 - 能回答"Trace 和日志有什么区别"
 - 能回答"没有标准答案的 Agent 任务怎么评估"
 - 能说清是模型问题、工具问题还是上下文问题
+- 能说出 SWE-bench 为什么难
+- 能说出 LLM-as-Judge 的 3 种常见偏见
 
 ### coding 保底
 
@@ -358,6 +366,15 @@
    - batch / 吞吐 / 延迟权衡
 2. 写出"为什么 Context Engineering 会直接影响推理成本"
 3. 准备 GPU、显存和 KV Cache 相关快答题
+4. 练习 Transformer 架构深度题目
+   - MHA → MQA → GQA → MLA 演进逻辑
+   - RoPE 旋转位置编码原理
+   - FlashAttention 对 Agent 场景的影响
+   - MoE 在 Agent 场景中的特殊考虑
+5. 练习 Agentic 推理优化题目
+   - Agent 场景的 Prefill/Decode 特殊性
+   - Prefix Caching 复用 system prompt
+   - DualPath 在 Agentic 推理中的作用
 
 ### 今日输出
 
@@ -370,6 +387,8 @@
 - 能回答"KV Cache 的作用和代价是什么"
 - 能回答"为什么长上下文昂贵"
 - 能说出在线 Agent 场景中为何推理成本容易爆炸
+- 能说出 MHA → GQA → MLA 的演进动力
+- 能解释 Prefix Caching 在 Agent 场景的收益
 
 ### 晚间抽查
 

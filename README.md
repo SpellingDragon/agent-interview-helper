@@ -38,6 +38,26 @@ python3 interview_assistant.py --mock --count 8
 python3 interview_assistant.py --data-dir ./my_data
 ```
 
+## 三套题库
+
+本项目维护三套独立的面试题库，每套包含 `plan.md`（14 天执行清单）和 `question.md`（高频问答题库），定位如下：
+
+| 题库 | 目录 | 适用方向 | 题目数量 |
+|------|------|----------|----------|
+| Agent 平台工程师 | `agent/` | Agent Runtime / Tool / MCP / Memory / Eval | 110 题 |
+| AI Infra 系统工程师 | `ai-infra/` | 推理引擎 / 分布式训练 / CUDA / 系统设计 | 105 题 |
+| LLM 理论与后训练 | `llm/` | Transformer / RL 后训练 / Scaling Law | 82 题 |
+
+使用方式：
+
+```bash
+python3 interview_assistant.py --data-dir ./agent
+python3 interview_assistant.py --data-dir ./ai-infra
+python3 interview_assistant.py --data-dir ./llm
+```
+
+三套题库互不依赖，可独立使用和更新。
+
 ## 工作方式
 
 脚本启动后默认读取同目录下的两个文件：
